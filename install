@@ -1,0 +1,5 @@
+cd ~/paypkg
+gem build paypkg.gemspec
+sudo gem uninstall paypkg
+sudo gem install paypkg
+
