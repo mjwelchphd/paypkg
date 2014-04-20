@@ -1,0 +1,10 @@
+<h1>Paypkg -- Buyer Approved</h1>
+<p>The buyer selected to approve the purchase.</p>
+<br/>
+<% if @note %>
+  <p>Response: <%= @note %></p>
+<% else %>
+  <p>payment ID: <%= @payment_id %></p>
+  <p>Sale ID: <%= @sale_id %></p>
+  <p>Amount: <%= @amount %></p>
+<% end %>

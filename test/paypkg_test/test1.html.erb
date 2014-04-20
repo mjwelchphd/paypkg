@@ -1,0 +1,15 @@
+<style>
+  red: { color: red; }
+</style>
+
+<h1>Paypkg Test1</h1>
+
+<pre>
+  <% @notes.each do |note| %>
+    <% if note.index(' NOT ') || note.index(' Failed') %>
+      <red><%= note %></red>
+    <% else %>
+      <%= note %>
+    <% end %>
+  <% end %>
+</pre>

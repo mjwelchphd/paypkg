@@ -1,0 +1,18 @@
+development:
+  client_id: 'AZPi5hCY-0SoaLmignRs9XV6N4mvRS2TVKFDF2ni53alKL0iJTvtcy9BSR4D'
+  secret: 'EDubEBAg_ZztC-_HlsW16IFZcxBIatFt7c0ILuxNTpWAVnvrsO9ywVxnHr7J'
+  uri_base: 'https://api.sandbox.paypal.com'
+  website: 'http://www.example.com:3000'
+
+test:
+  client_id: 'AZPi5hCY-0SoaLmignRs9XV6N4mvRS2TVKFDF2ni53alKL0iJTvtcy9BSR4D'
+  secret: 'EDubEBAg_ZztC-_HlsW16IFZcxBIatFt7c0ILuxNTpWAVnvrsO9ywVxnHr7J'
+  uri_base: 'https://api.sandbox.paypal.com'
+  website: 'http://www.example.com:3000'
+
+production:
+  client_id: 'AVWiuBCE6_ps2zCh0Qaq0MaIbP8v2bjfFnKH5esYR9v6sNvu-MzVeWny3crM'
+  secret: 'EKKoNhCgFn_0lmpUAxXir0ySN4cmaLzGugUmnkgZHR90Kg9Y_DFmJbI2H0Ee'
+  uri_base: 'https://api.paypal.com'
+  website: 'https://www.example.com'
+  

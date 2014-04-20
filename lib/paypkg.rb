@@ -1,20 +1,52 @@
 require "net/http"
 require "yaml"
 
-class NilClass
-  def empty?
-    true
+# @author Michael J. Welch, Ph.D.
+
+# The PaypkgResponse class converts a standard hash to a nested class object...
+# NOTE: The outside object MUST BE a hash
+# For example:
+#  e = PaypkgResponse.new({'x'=>7,'a'=>[{'f'=>1},{'g'=>2}]})
+# yields:
+#  <PaypkgResponse:0x00000004dc0e20 @x=7, @a=[#<PaypkgResponse:0x00000004dc0ce0 @f=1>, #<PaypkgResponse:0x00000004dc0bf0 @g=2>]>
+# and can be accessed like the example below.
+#
+# @param hash [Hash] The hash to be converted into an object
+# @example PaypkgResponse
+#  puts e => #<Response:0x00000004dd3c50>
+#  puts e.x => 7
+#  puts e.a => [#<Response:0x00000004dd3b10>, #<Response:0x00000004dd39f8>]
+#  puts e.a[0].f => 1
+#  puts e.a[1].g => 2
+class PaypkgResponse
+  def initialize(hash)
+    hash.each do |name, value|
+      case
+        when value.class==Array
+          obj = []
+          value.each { |item| obj << PaypkgResponse.new(item) }
+          self.class.__send__(:attr_accessor, name)
+          instance_variable_set("@#{name}", obj)
+        when value.class==Hash
+          self.class.__send__(:attr_accessor, name)
+          instance_variable_set("@#{name}", PaypkgResponse.new(value))
+        else
+          self.class.__send__(:attr_accessor, name)
+          instance_variable_set("@#{name}", value)
+      end
+    end
   end
 end
 
 class Paypkg
 
-  VERSION = '0.1.0'
-
   attr_reader :json, :hash, :status, :mode, :link
 
 private
 
+  # The initialize method reads the config file, calls PayPal for an access_token,
+  # stores the access_token in the session, and initializes some variables
+  # @param session [Hash] The session object from your ApplicationController subclass
   def initialize(session=nil)
     @session = if session then session else {} end
     @session[:paypal_authorization] ||= {}
@@ -36,6 +68,8 @@ private
     @status = []
   end
 
+  # The set_access_token method is called before each PayPal request to validate
+  # the access_token -- if the token is stale, a new one is obtained
   def set_access_token
     if (Time.now-5)>@session[:paypal_authorization][:expires_after]
       request = Net::HTTP::Post.new("/v1/oauth2/token")
@@ -62,6 +96,25 @@ private
 
 public
 
+  # The call_paypal method is used to call PayPal with a json string, and return the
+  # response json string and HTTP exit code -- The json response, the response
+  # converted into a hash, and the status code are all stored -- some calls (like
+  # validate_credit_card) actually make two PayPal calls, so the json, hash,
+  # and status are arrays
+  #
+  # @param endpoint [String] The PayPal endpoint depends on which service
+  #   you're requesting -- required
+  # @param data [json String] The "put" data, if any, in the form of a json string
+  # @param reset [:yes or :no] If the json, hash, and status should be cleared, then :yes,
+  #   or :no for the second PayPal call in a two call function
+  # @param method [:get, :post, or :delete] The HTTP type
+  # @example
+  #  call_paypal("/v1/payments/payment/PAY-2BG385817G530460DKNDSITI/execute/", "{
+  #    'payer_id' : 'EC-71588296U3330482A'
+  #  }")
+  # @return [json String] The json response from PayPal, if any
+  # @return [Hash] The json String converted into a hash
+  # @return [String] The HTTP status code
   def call_paypal(endpoint, data=nil, options={reset: :yes, method: :get})
     set_access_token
     options = {:reset => :yes, :method => :get}.merge(options)
@@ -88,546 +141,22 @@ public
     @status << response.code
   end
 
-######################
-### CURRENCY CODES ###
-######################
-
-  PAYPAL_CURRENCIES = {
-    "Australian dollar" => "AUD",
-    "Brazilian real" => "BRL",
-    "Canadian dollar" => "CAD",
-    "Czech koruna" => "CZK",
-    "Danish krone" => "DKK",
-    "Euro" => "EUR",
-    "Hong Kong dollar" => "HKD",
-    "Hungarian forint" => "HUF",
-    "Israeli new shekel" => "ILS",
-    "Japanese yen" => "JPY",
-    "Malaysian ringgit" => "MYR",
-    "Mexican peso" => "MXN",
-    "New Taiwan dollar" => "TWD",
-    "New Zealand dollar" => "NZD",
-    "Norwegian krone" => "NOK",
-    "Philippine peso" => "PHP",
-    "Polish złoty" => "PLN",
-    "Pound sterling" => "GBP",
-    "Singapore dollar" => "SGD",
-    "Swedish krona" => "SEK",
-    "Swiss franc" => "CHF",
-    "Thai baht" => "THB",
-    "Turkish lira" => "TRY",
-    "United States dollar" => "USD"
-   }
-
-######################
-### LANGUAGE CODES ###
-######################
-
-  PAYPAL_LANGUAGES = [
-    "da_DK",
-    "de_DE",
-    "en_AU",
-    "en_GB",
-    "en_US",
-    "es_ES",
-    "es_XC",
-    "fr_CA",
-    "fr_FR",
-    "fr_XC",
-    "he_IL",
-    "id_ID",
-    "it_IT",
-    "ja_JP",
-    "nl_NL",
-    "no_NO",
-    "pl_PL",
-    "pt_BR",
-    "pt_PT",
-    "ru_RU",
-    "sv_SE",
-    "th_TH",
-    "tr_TR",
-    "zh_CN",
-    "zh_HK",
-    "zh_TW",
-    "zh_XC"
-  ]
-
-#####################
-### COUNTRY CODES ###
-#####################
-
-  PAYPAL_COUNTRIES = {
-    "ALAND ISLANDS" => "AX",
-    "ALBANIA" => "AL",
-    "ALGERIA" => "DZ",
-    "AMERICAN SAMOA" => "AS",
-    "ANDORRA" => "AD",
-    "ANGOLA" => "AO",
-    "ANGUILLA" => "AI",
-    "ANTARCTICA" => "AQ",
-    "ANTIGUA AND BARBUDA" => "AG",
-    "ARGENTINA" => "AR",
-    "ARMENIA" => "AM",
-    "ARUBA" => "AW",
-    "AUSTRALIA" => "AU",
-    "AUSTRIA" => "AT",
-    "AZERBAIJAN" => "AZ",
-    "BAHAMAS" => "BS",
-    "BAHRAIN" => "BH",
-    "BANGLADESH" => "BD",
-    "BARBADOS" => "BB",
-    "BELGIUM" => "BE",
-    "BELIZE" => "BZ",
-    "BENIN" => "BJ",
-    "BERMUDA" => "BM",
-    "BHUTAN" => "BT",
-    "BOLIVIA" => "BO",
-    "BOSNIA-HERZEGOVINA" => "BA",
-    "BOTSWANA" => "BW",
-    "BOUVET ISLAND" => "BV",
-    "BRAZIL" => "BR",
-    "BRITISH INDIAN OCEAN TERRITORY" => "IO",
-    "BRUNEI DARUSSALAM" => "BN",
-    "BULGARIA" => "BG",
-    "BURKINA FASO" => "BF",
-    "BURUNDI" => "BI",
-    "CAMBODIA" => "KH",
-    "CANADA" => "CA",
-    "CAPE VERDE" => "CV",
-    "CAYMAN ISLANDS" => "KY",
-    "CENTRAL AFRICAN REPUBLIC" => "CF",
-    "CHAD" => "TD",
-    "CHILE" => "CL",
-    "CHINA" => "CN (For domestic Chinese bank transactions only)",
-    "CHRISTMAS ISLAND" => "CX",
-    "COCOS (KEELING) ISLANDS" => "CC",
-    "COLOMBIA" => "CO",
-    "COMOROS" => "KM",
-    "DEMOCRATIC REPUBLIC OF CONGO" => "CD",
-    "CONGO" => "CG",
-    "COOK ISLANDS" => "CK",
-    "COSTA RICA" => "CR",
-    "CROATIA" => "HR",
-    "CYPRUS" => "CY",
-    "CZECH REPUBLIC" => "CZ",
-    "DENMARK" => "DK",
-    "DJIBOUTI" => "DJ",
-    "DOMINICA" => "DM",
-    "DOMINICAN REPUBLIC" => "DO",
-    "ECUADOR" => "EC",
-    "EGYPT" => "EG",
-    "EL SALVADOR" => "SV",
-    "ERITERIA" => "ER",
-    "ESTONIA" => "EE",
-    "ETHIOPIA" => "ET",
-    "FALKLAND ISLANDS (MALVINAS)" => "FK",
-    "FAROE ISLANDS" => "FO",
-    "FIJI" => "FJ",
-    "FINLAND" => "FI",
-    "FRANCE" => "FR",
-    "FRENCH GUIANA" => "GF",
-    "FRENCH POLYNESIA" => "PF",
-    "FRENCH SOUTHERN TERRITORIES" => "TF",
-    "GABON" => "GA",
-    "GAMBIA" => "GM",
-    "GEORGIA" => "GE",
-    "GERMANY" => "DE",
-    "GHANA" => "GH",
-    "GIBRALTAR" => "GI",
-    "GREECE" => "GR",
-    "GREENLAND" => "GL",
-    "GRENADA" => "GD",
-    "GUADELOUPE" => "GP",
-    "GUAM" => "GU",
-    "GUATEMALA" => "GT",
-    "GUERNSEY" => "GG",
-    "GUINEA" => "GN",
-    "GUINEA BISSAU" => "GW",
-    "GUYANA" => "GY",
-    "HEARD ISLAND AND MCDONALD ISLANDS" => "HM",
-    "HOLY SEE (VATICAN CITY STATE)" => "VA",
-    "HONDURAS" => "HN",
-    "HONG KONG" => "HK",
-    "HUNGARY" => "HU",
-    "ICELAND" => "IS",
-    "INDIA" => "IN",
-    "INDONESIA" => "ID",
-    "IRELAND" => "IE",
-    "ISLE OF MAN" => "IM",
-    "ISRAEL" => "IL",
-    "ITALY" => "IT",
-    "JAMAICA" => "JM",
-    "JAPAN" => "JP",
-    "JERSEY" => "JE",
-    "JORDAN" => "JO",
-    "KAZAKHSTAN" => "KZ",
-    "KENYA" => "KE",
-    "KIRIBATI" => "KI",
-    "KOREA, REPUBLIC OF" => "KR",
-    "KUWAIT" => "KW",
-    "KYRGYZSTAN" => "KG",
-    "LAOS" => "LA",
-    "LATVIA" => "LV",
-    "LESOTHO" => "LS",
-    "LIECHTENSTEIN" => "LI",
-    "LITHUANIA" => "LT",
-    "LUXEMBOURG" => "LU",
-    "MACAO" => "MO",
-    "MACEDONIA" => "MK",
-    "MADAGASCAR" => "MG",
-    "MALAWI" => "MW",
-    "MALAYSIA" => "MY",
-    "MALDIVES" => "MV",
-    "MALI" => "ML",
-    "MALTA" => "MT",
-    "MARSHALL ISLANDS" => "MH",
-    "MARTINIQUE" => "MQ",
-    "MAURITANIA" => "MR",
-    "MAURITIUS" => "MU",
-    "MAYOTTE" => "YT",
-    "MEXICO" => "MX",
-    "MICRONESIA, FEDERATED STATES OF" => "FM",
-    "MOLDOVA, REPUBLIC OF" => "MD",
-    "MONACO" => "MC",
-    "MONGOLIA" => "MN",
-    "MONTENEGRO" => "ME",
-    "MONTSERRAT" => "MS",
-    "MOROCCO" => "MA",
-    "MOZAMBIQUE" => "MZ",
-    "NAMIBIA" => "NA",
-    "NAURU" => "NR",
-    "NEPAL" => "NP",
-    "NETHERLANDS" => "NL",
-    "NETHERLANDS ANTILLES" => "AN",
-    "NEW CALEDONIA" => "NC",
-    "NEW ZEALAND" => "NZ",
-    "NICARAGUA" => "NI",
-    "NIGER" => "NE",
-    "NIUE" => "NU",
-    "NORFOLK ISLAND" => "NF",
-    "NORTHERN MARIANA ISLANDS" => "MP",
-    "NORWAY" => "NO",
-    "OMAN" => "OM",
-    "PALAU" => "PW",
-    "PALESTINE" => "PS",
-    "PANAMA" => "PA",
-    "PARAGUAY" => "PY",
-    "PAPUA NEW GUINEA" => "PG",
-    "PERU" => "PE",
-    "PHILIPPINES" => "PH",
-    "PITCAIRN" => "PN",
-    "POLAND" => "PL",
-    "PORTUGAL" => "PT",
-    "PUERTO RICO" => "PR",
-    "QATAR" => "QA",
-    "REUNION" => "RE",
-    "ROMANIA" => "RO",
-    "REPUBLIC OF SERBIA" => "RS",
-    "RUSSIAN FEDERATION" => "RU",
-    "RWANDA" => "RW",
-    "SAINT HELENA" => "SH",
-    "SAINT KITTS AND NEVIS" => "KN",
-    "SAINT LUCIA" => "LC",
-    "SAINT PIERRE AND MIQUELON" => "PM",
-    "SAINT VINCENT AND THE GRENADINES" => "VC",
-    "SAMOA" => "WS",
-    "SAN MARINO" => "SM",
-    "SAO TOME AND PRINCIPE" => "ST",
-    "SAUDI ARABIA" => "SA",
-    "SENEGAL" => "SN",
-    "SEYCHELLES" => "SC",
-    "SIERRA LEONE" => "SL",
-    "SINGAPORE" => "SG",
-    "SLOVAKIA" => "SK",
-    "SLOVENIA" => "SI",
-    "SOLOMON ISLANDS" => "SB",
-    "SOMALIA" => "SO",
-    "SOUTH AFRICA" => "ZA",
-    "SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS" => "GS",
-    "SPAIN" => "ES",
-    "SRI LANKA" => "LK",
-    "SURINAME" => "SR",
-    "SVALBARD AND JAN MAYEN" => "SJ",
-    "SWAZILAND" => "SZ",
-    "SWEDEN" => "SE",
-    "SWITZERLAND" => "CH",
-    "TAIWAN, PROVINCE OF CHINA" => "TW",
-    "TAJIKISTAN" => "TJ",
-    "TANZANIA, UNITED REPUBLIC OF" => "TZ",
-    "THAILAND" => "TH",
-    "TIMOR-LESTE" => "TL",
-    "TOGO" => "TG",
-    "TOKELAU" => "TK",
-    "TONGA" => "TO",
-    "TRINIDAD AND TOBAGO" => "TT",
-    "TUNISIA" => "TN",
-    "TURKEY" => "TR",
-    "TURKMENISTAN" => "TM",
-    "TURKS AND CAICOS ISLANDS" => "TC",
-    "TUVALU" => "TV",
-    "UGANDA" => "UG",
-    "UKRAINE" => "UA",
-    "UNITED ARAB EMIRATES" => "AE",
-    "UNITED KINGDOM" => "GB",
-    "UNITED STATES" => "US",
-    "UNITED STATES MINOR OUTLYING ISLANDS" => "UM",
-    "URUGUAY" => "UY",
-    "UZBEKISTAN" => "UZ",
-    "VANUATU" => "VU",
-    "VENEZUELA" => "VE",
-    "VIETNAM" => "VN",
-    "VIRGIN ISLANDS, BRITISH" => "VG",
-    "VIRGIN ISLANDS, U.S." => "VI",
-    "WALLIS AND FUTUNA" => "WF",
-    "WESTERN SAHARA" => "EH",
-    "YEMEN" => "YE",
-    "ZAMBIA" => "ZM"
-  }
-
-############################
-### Validate Credit Card ###
-############################
-
-  def validate_credit_card(type, number, expire_month, expire_year, cvv2, \
-    first_name, last_name, line1, city, state, postal_code, country_code)
-    call_paypal("/v1/payments/payment", "{
-      'intent':'authorize',
-      'payer':{
-        'payment_method':'credit_card',
-        'funding_instruments':[
-          {
-            'credit_card':{
-              'number':'#{number}',
-              'type':'#{type}',
-              'expire_month':#{expire_month},
-              'expire_year':#{expire_year},
-              'cvv2':'#{cvv2}',
-              'first_name':'#{first_name}',
-              'last_name':'#{last_name}',
-              'billing_address':{
-                'line1':'#{line1}',
-                'city':'#{city}',
-                'state':'#{state}',
-                'postal_code':'#{postal_code}',
-                'country_code':'#{country_code}'
-              }
-            }
-          }
-        ]
-      },
-      'transactions':[
-        {
-          'amount':{
-            'total':0.01,
-            'currency':'USD'
-          },
-          'description':'This is a validation transaction.'
-        }
-      ]
-    }")
-    if (@status.last=='201') && (@hash.last[:state]=='approved')
-      link = @hash.last[:transactions][0][:related_resources][0][:authorization][:links].select{|link| link[:rel]=='void'}
-      call_paypal(link[0][:href], nil, :method => :post, :reset => :no)
-      return true if (@status.last=='200') && (@hash.last[:state]=='voided')
-    end
-    return false
+  # This is a getter which is used to obtain the PaypkgResponse Object
+  # from the hash
+  # @return [PaypkgResponse Instance]
+  def response
+    if hash.last then PaypkgResponse.new(hash.last) else nil end
   end
-
-#########################
-### Store Credit Card ###
-#########################
-
-  def store_credit_card(type, number, expire_month, expire_year, cvv2, first_name,
-    last_name, line1, line2, city, state, postal_code, country_code, payer_id)
-    json = "{
-      'payer_id':'#{payer_id}',
-      'type':'#{type}',
-      'number':'#{number}',
-      'expire_month':'#{expire_month}',
-      'expire_year':'#{expire_year}',
-      'cvv2':'#{cvv2}',
-      'first_name':'#{first_name}',
-      'last_name':'#{last_name}',
-      'billing_address':{
-        'line1':'#{line1}',\n"
-    json << " 'line2':'#{line2}',\n" if line2
-    json << " 'city':'#{city}',
-        'state':'#{state}',
-        'postal_code':'#{postal_code}',
-        'country_code':'#{country_code}'
-      }
-    }"
-    call_paypal("/v1/vault/credit-card", json)
-    return (@status.last=='201') && (@hash.last[:state]=='ok')
-  end
-
-############################
-### Retrieve Credit Card ###
-############################
-
-  def retrieve_credit_card(vault_id)
-    call_paypal("/v1/vault/credit-card/#{vault_id}")
-    return (@status.last=='200') && (@hash.last[:state]=='ok')
-  end
-
-##########################
-### Delete Credit Card ###
-##########################
-
-  def delete_credit_card(vault_id)
-    call_paypal("/v1/vault/credit-card/#{vault_id}", nil, :method => :delete)
-    return (@status.last=='204') && (@hash.last==nil)
-  end
-
-##########################################
-### Payment Using Accepted Credit Card ###
-##########################################
-
-  def accept_tendered_cc_payment(type, number, expire_month, expire_year, cvv2, first_name,
-    last_name, amount, desc)
-    formatted_amount = "%0.2f"%amount
-    json = "{
-      'intent':'sale',
-      'payer':{
-        'payment_method':'credit_card',
-        'funding_instruments':[
-          {
-            'credit_card':{
-              'type':'#{type}',
-              'number':'#{number}',"
-    json << " 'cvv2':'#{cvv2}'," if cvv2
-    json << " 'first_name':'#{first_name}'," if first_name
-    json << " 'last_name':'#{last_name}'," if last_name
-    json << " 'expire_month':'#{expire_month}',
-              'expire_year':'#{expire_year}'
-            }
-          }
-        ]
-      },
-      'transactions':[
-        {
-          'amount':{
-            'total':'#{formatted_amount}',
-            'currency':'USD'
-          },
-          'description':'#{desc}'
-        }
-      ]
-    }"
-    call_paypal("/v1/payments/payment", json)
-    return (@status.last=='201') && (@hash.last[:state]=='approved')
-  end
-
-########################################
-### Payment Using Stored Credit Card ###
-########################################
-
-  def accept_stored_cc_payment(card_id, amount, desc, email, payer_id)
-    formatted_amount = "%0.2f"%amount
-    call_paypal("/v1/payments/payment", "{
-      'intent':'sale',
-      'payer':{
-        'payment_method':'credit_card',
-        'payer_info':{
-          'email':'#{email}'
-        },
-        'funding_instruments':[
-          {
-            'credit_card_token':{
-              'credit_card_id':'#{card_id}',
-              'payer_id':'#{payer_id}'
-            }
-          }
-        ]
-      },
-      'transactions':[
-        {
-          'amount':{
-            'total':'#{formatted_amount}',
-            'currency':'USD'
-          },
-          'description':'#{desc}'
-        }
-      ]
-    }")
-    return (@status.last=='201') && (@hash.last[:state]=='approved')
-  end
-
-##############################
-### Payment Through PayPal ###
-##############################
-
-  def accept_pp_payment(amount, desc, approved_url, cancelled_url, payer_id)
-    set_access_token # we need this here to set the @website
-    formatted_amount = "%0.2f"%amount
-    json, status = call_paypal("/v1/payments/payment", "{
-      'intent':'sale',
-      'redirect_urls':{
-        'return_url':'#{@website}/#{approved_url}/',
-        'cancel_url':'#{@website}/#{cancelled_url}/'
-      },
-      'payer':{
-        'payment_method':'paypal'
-      },
-      'transactions':[
-        {
-          'amount':{
-            'total':'#{formatted_amount}',
-            'currency':'USD'
-          },
-          'description':'#{desc}'
-        }
-      ]
-    }")
-    if (@status.last=='201') && (@hash.last[:state]=='created')
-      @session[:payment_id] = @hash.last[:id]
-      @link = @hash.last[:links].select{|link| link[:rel]=='approval_url'}[0][:href]
-      return true
-    else
-      return false
-    end
-  end
-
-  # this is executed by the code at the 'accepted' url
-  def execute_payment(payer_id, payment_id)
-    call_paypal("/v1/payments/payment/#{payment_id}/execute/", "{
-      'payer_id' : '#{payer_id}'
-    }")
-    return (@status.last=='200') && (@hash.last[:state]=='approved')
-  end
-
-#################################
-### Retrieve Sale Transaction ###
-#################################
-
-  def retrieve_sale_transaction(sale_id)
-    call_paypal("/v1/payments/sale/#{sale_id}")
-    return (@status.last=='200') && (['pending', 'completed', 'refunded', 'partially_refunded'].index(@hash.last[:state])>0)
-  end
-
-###############################################
-### Full or Partial Refund Previous Payment ###
-###############################################
-
-  def refund_sale(sale_id,amount)
-    formatted_amount = "%0.2f"%amount
-    call_paypal("/v1/payments/sale/#{sale_id}/refund", "{
-      'amount': {
-        'total': #{formatted_amount},
-        'currency': 'USD'
-      }
-    }")
-    return (@status.last=='201') && (@hash.last[:state]=='completed')
-  end
-
-###################################
-### Retrieve Refund Transaction ###
-###################################
-
-  def retrieve_refund_transaction(refund_id)
-    call_paypal("/v1/payments/refund/#{refund_id}")
-    return (@status.last=='200') && (['pending', 'completed', 'refunded', 'partially_refunded'].index(@hash.last[:state])>0)
-  end
-
 end
+
+# This require loop has to be after the Paypkg class.
+# File.dirname(__FILE__) => the location of this file in
+# the place where your system installed this gem.
+Dir[File.dirname(__FILE__) + '/paypkg/*.rb'].each {|file| require(file) }
+
+# This has to be after the above require loop because the
+# Version module is one of the files being required.
+class Paypkg
+  include Version
+end
+
