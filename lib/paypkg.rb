@@ -1,5 +1,5 @@
 require "net/http"
-require "yaml"
+require "json"
 
 # @author Michael J. Welch, Ph.D.
 
@@ -40,7 +40,9 @@ end
 
 class Paypkg
 
-  attr_reader :json, :hash, :status, :mode, :link
+  include JSON
+
+  attr_reader :json, :hash, :status, :mode, :link, :request
 
 private
 
@@ -66,6 +68,7 @@ private
     @json = []
     @hash = []
     @status = []
+    @request = []
   end
 
   # The set_access_token method is called before each PayPal request to validate
@@ -84,6 +87,7 @@ private
         @access_token = nil
         raise Net::HTTPServerException.new("Unable to obtain access token from PayPal", response)
       else
+puts response.body.inspect
         hash = JSON.parse(response.body, :symbolize_names=>true)
         @session[:paypal_authorization][:expires_after] = Time.now+hash[:expires_in]
         @session[:paypal_authorization][:access_token] = hash[:access_token]
@@ -122,6 +126,7 @@ public
       @json = []
       @hash = []
       @status = []
+      @request = []
     end
     case
       when options[:method]==:delete
@@ -131,6 +136,7 @@ public
       when options[:method]==:get
         request = Net::HTTP::Get.new(endpoint)
     end
+    @request << data
     request.add_field("Content-Type","application/json")
     request.add_field("Authorization", "Bearer #{@access_token}")
     request.body = data.gsub("'",'"') if data
