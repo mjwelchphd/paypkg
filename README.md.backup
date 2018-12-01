@@ -6,3 +6,4 @@ This project is licenced under the [MIT License](LICENSE.md).
 See the README.html for more details.
 
 NOTE: 
+      pp = Paypkg.new(session, Rails.env, Rails.root.to_path)

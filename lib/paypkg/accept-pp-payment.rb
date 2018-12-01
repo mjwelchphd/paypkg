@@ -16,8 +16,7 @@ class Paypkg
   # @param desc
   # @param approved_url
   # @param cancelled_url
-  # @param payer_id
-  def accept_pp_payment(amount, desc, approved_url, cancelled_url, payer_id)
+  def accept_pp_payment(amount, desc, approved_url, cancelled_url)
     set_access_token # we need this here to set the @website
     formatted_amount = "%0.2f"%amount
     json, status = call_paypal("/v1/payments/payment", "{

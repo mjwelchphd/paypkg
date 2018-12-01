@@ -22,7 +22,7 @@
 <!-------------------------------------------------------------------->
 <h3>Copyright</h3>
 
-<p>Copyright (&copy;) 2014, Michael J. Welch, Ph.D. and Contributors. All Rights Reserved.</p>
+<p>Copyright (&copy;) 2014-2018, Michael J. Welch, Ph.D. and Contributors. All Rights Reserved.</p>
 
 <p>Email: rubygems@czarmail.com</p>
 
@@ -52,7 +52,7 @@ development:~$ gem install pretty_inspect</pre>
 <p>Follow the steps below. First, create a rails project. In this case, I'm using bundler. You probably are too..</p>
 
 <pre>development:~$ rails new paypkg-test -d mysql
-      create  
+      create
       create  README.rdoc
       ...
       create  vendor/assets/stylesheets/.keep
@@ -108,7 +108,7 @@ development:~/paypkg-test$ </pre>
   get   'paypkg_test/approved'        => 'paypkg_test#approved'
   get   'paypkg_test/cancelled'       => 'paypkg_test#cancelled'
 end</pre>
-  
+
 <p>Configure your <code>config/database.yml</code>. If you don't know how to do this, consult your Rails documentation. If you already have a working project, you can copy the <code>database.yml</code> from there. This test program does <i><b>not</b></i> access the database, but Rails won't start without one.</p>
 
 <p>Copy the test page and view folder. Your gems might be in a different place, so beware!</p>

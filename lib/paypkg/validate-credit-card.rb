@@ -63,7 +63,8 @@ class Paypkg
     call_paypal("/v1/payments/payment", data)
     if (@status.last=='201') && (@hash.last[:state]=='approved')
       link = @hash.last[:transactions][0][:related_resources][0][:authorization][:links].select{|link| link[:rel]=='void'}
-      call_paypal(link[0][:href], nil, :method => :post, :reset => :no)
+      endpoint = link[0][:href][@uri_base.length..-1] # remove the uri_base from the beginning of the link
+      call_paypal(endpoint, nil, :method => :post, :reset => :no)
       return true if (@status.last=='200') && (@hash.last[:state]=='voided')
     end
     return false

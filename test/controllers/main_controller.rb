@@ -1,11 +1,13 @@
-class PaypkgTestController < ApplicationController
+class MainController < Controller
+
+  map '/'
 
   def test1
     @notes = []
 
     card_id = nil
     begin
-      pp = Paypkg.new(session)
+      pp = Paypkg.new(session, Rails.env, Rails.root.to_path)
 
       @ok = pp.validate_credit_card('visa', '4417119669820331', '11', '2018', '999', \
         'Betsy', 'Buyer', '111 First Street', 'Saratoga', 'CA', '95070', 'US')
@@ -198,7 +200,7 @@ class PaypkgTestController < ApplicationController
 
 
   def test2
-    pp = Paypkg.new(session)
+    pp = Paypkg.new(session, Rails.env, Rails.root.to_path)
     @ok = pp.accept_pp_payment(3.0, 'Test Charge', 'paypkg_test/approved', 'paypkg_test/cancelled', 'betsy')
     redirect_to pp.link if @ok
   end
@@ -209,7 +211,7 @@ class PaypkgTestController < ApplicationController
 ########################
 
   def approved
-    pp = Paypkg.new(session)
+    pp = Paypkg.new(session, Rails.env, Rails.root.to_path)
     @ok = pp.execute_payment(params[:PayerID],session[:payment_id])
     if @ok
       payment_data = pp.hash.last

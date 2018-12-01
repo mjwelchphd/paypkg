@@ -1,0 +1,42 @@
+# To build the gem and install locally
+sudo gem uninstall paypkg
+gem build paypkg.gemspec
+sudo gem install paypkg
+
+sudo gem uninstall paypkg; gem build paypkg.gemspec; sudo gem install paypkg
+
+#----------------------------------------
+
+# To set globals in Git
+git config --global user.name "Michael J. Welch, Ph.D."
+git config --global user.email mjwelchphd@gmail.com
+git config --global core.editor xed
+git config --list
+
+#----------------------------------------
+
+# To push up to GitHub
+git remote add origin https://github.com/mjwelchphd/paypkg.git
+
+#--- BEFORE PUSHING AN UPDATE ---
+# UPDATE THE paypkg GEM SRC
+# CHANGE VERSION AND DATE
+# UPDATE CHANGELOG
+# UPDATE README.html (IF NEEDED)
+# BUILD AND TEST THE GEM
+# UPDATE VERSION BELOW IN THE gem push COMMAND
+#****************************************
+# PAY ATTENTION HERE:
+# BE SURE TO SAVE ALL FILES (like NOTES) #<------------- DON'T FORGET!
+# BUILD THE GEM ONE LAST TIME TO BE SURE ALL CHANGES (like version date) ARE INCLUDED
+# COMMIT CHANGES IN GIT BEFORE PUSHING!  #<------------- DON'T FORGET!
+git push -u origin master
+
+#----------------------------------------
+
+# To upload the gem to rubygems.org
+gem push paypkg-0.1.7.gem
+
+sudo gem install paypkg
+
+#----------------------------------------

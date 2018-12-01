@@ -20,7 +20,7 @@ module PaypalCurrencies
     "New Zealand dollar" => "NZD",
     "Norwegian krone" => "NOK",
     "Philippine peso" => "PHP",
-    "Polish złoty" => "PLN",
+    "Polish zlotych" => "PLN",
     "Pound sterling" => "GBP",
     "Singapore dollar" => "SGD",
     "Swedish krona" => "SEK",
